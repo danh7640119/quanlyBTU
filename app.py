@@ -3,90 +3,88 @@ import pandas as pd
 import folium
 from streamlit_folium import st_folium
 
-# --- CẤU HÌNH TRANG ---
-st.set_page_config(page_title="Quản lý Cơ sở Kinh doanh", layout="wide")
+# --- CẤU HÌNH GIAO DIỆN CHUẨN ---
+st.set_page_config(page_title="KẾT QUẢ ĐIỀU TRA", layout="wide")
 
-# CSS để tùy chỉnh giao diện giống hình mẫu (Dark mode nhẹ, bảng gọn gàng)
+# CSS để ép giao diện giống hình (Bảng bên phải, Map bên trái, Metrics nằm dưới)
 st.markdown("""
     <style>
-    .main { background-color: #f8f9fa; }
-    .stMetric { background-color: #ffffff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-    /* Tối ưu hiển thị bảng trên mobile */
-    @media (max-width: 600px) {
-        .stDataFrame { font-size: 10px; }
+    [data-testid="stMetricValue"] { font-size: 24px; font-weight: bold; }
+    .stDataFrame { border: 1px solid #e6e9ef; border-radius: 5px; }
+    /* Tối ưu cho mobile */
+    @media (max-width: 768px) {
+        .stColumn { width: 100% !important; }
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 1. MÔ PHỎNG DỮ LIỆU (Thay bằng pd.read_csv hoặc sheet của bạn) ---
-@st.cache_data
+# --- 1. DỮ LIỆU (Dựa trên thông tin trong hình) ---
 def load_data():
     data = {
-        'Tên Cơ Sở': ['Công ty ABC', 'Cơ sở Suối Sâu', 'Ấp Đất Cuốc', 'Xưởng Gỗ Thành Tâm', 'Tiệm KD Tổng Hợp'],
-        'Lĩnh Vực': ['Sản xuất Gỗ', 'Nông nghiệp', 'Dịch vụ', 'Sản xuất Gỗ', 'Bán lẻ'],
-        'Địa Chỉ': ['Bắc Tân Uyên', 'Suối Sâu', 'Đất Cuốc', 'Bắc Tân Uyên', 'Bắc Tân Uyên'],
-        'Số Lao Động': [45, 12, 8, 25, 3],
-        'Lat': [11.15, 11.16, 11.14, 11.155, 11.145],
-        'Lon': [106.85, 106.86, 106.84, 106.855, 106.845],
-        'Ghi Chú': ['Đang hoạt động', 'Mới thành lập', 'Đạt chuẩn', 'Cần kiểm tra', 'Đạt chuẩn']
+        'STT': range(1, 13),
+        'Tên Cơ Sở': ['Công ty ABC', 'Công ty ABC', 'Công ty ABC', 'Ấp Đất Cuốc', 'Ấp Đất Cuốc', 'Ấp Đất Cuốc', 'Ấp Đất Cuốc', 'Ấp Đất Cuốc', 'Ấp Đất Cuốc', 'Ấp - Suối Sâu', 'Ấp - Suối Sâu', 'Ấp - Suối Sâu'],
+        'Lĩnh Vực': ['Hỗ', 'Sản xuất Gỗ', 'Sản xuất Gỗ', 'Ấp', 'Sản xuất Gỗ', 'Đất Cuốc', 'Đất Cuốc', 'Sản xuất Gỗ', 'Đất Cuốc', 'Đất Cuốc', 'Đất Cuốc', 'Đất Cuốc'],
+        'Công ty': [12, 12, 12, 12, 12, 12, 12, 12, 13, 4, 12, 12],
+        'Số Lao Động': [33, 23, 18, 15, 15, 8, 6, 10, 4, 45, 3, 2],
+        'Lat': [11.155, 11.156, 11.157, 11.150, 11.149, 11.148, 11.147, 11.146, 11.145, 11.160, 11.161, 11.162],
+        'Lon': [106.850, 106.851, 106.852, 106.840, 106.841, 106.842, 106.843, 106.844, 106.845, 106.860, 106.861, 106.862],
+        'Anh': ['https://via.placeholder.com/150'] * 12 # Thay link ảnh thật vào đây
     }
     return pd.DataFrame(data)
 
 df = load_data()
 
-# --- 2. PHẦN HEADER & THỐNG KÊ NHANH ---
-st.title("📊 KẾT QUẢ ĐIỀU TRA CƠ SỞ KINH DOANH XÃ")
+# --- 2. TIÊU ĐỀ ---
+st.subheader("KẾT QUẢ ĐIỀU TRA CƠ SỞ KINH DOANH XÃ BẮC TÂN UYÊN")
 
-col_m1, col_m2, col_m3, col_m4 = st.columns(4)
-col_m1.metric("Tổng số điểm", len(df))
-col_m2.metric("Lao động địa phương", df['Số Lao Động'].sum())
-col_m3.metric("Công ty", len(df[df['Lĩnh Vực'].str.contains('Sản xuất')]))
-col_m4.metric("Hộ KD", len(df[df['Lĩnh Vực'].str.contains('Bán lẻ|Dịch vụ')]))
+# --- 3. BỐ CỤC CHÍNH (MAP & TABLE) ---
+col_map, col_table = st.columns([6, 4])
 
-st.divider()
-
-# --- 3. BẢN ĐỒ VÀ DANH SÁCH ---
-col_left, col_right = st.columns([6, 4])
-
-with col_left:
-    st.subheader("📍 Bản đồ phân bố")
-    # Khởi tạo bản đồ tại trung tâm dữ liệu
-    m = folium.Map(location=[df['Lat'].mean(), df['Lon'].mean()], zoom_start=13, tiles='OpenStreetMap')
+with col_map:
+    # Khởi tạo bản đồ
+    m = folium.Map(location=[11.15, 106.85], zoom_start=14, tiles='cartodbpositron')
     
-    # Thêm Marker cho từng cơ sở
     for i, row in df.iterrows():
-        # Nội dung khi bấm vào marker (Popup)
-        popup_html = f"""
-            <div style="width:200px">
-                <h4 style="margin-bottom:5px;">{row['Tên Cơ Sở']}</h4>
-                <b>Lĩnh vực:</b> {row['Lĩnh Vực']}<br>
-                <b>Lao động:</b> {row['Số Lao Động']}<br>
-                <b>Địa chỉ:</b> {row['Địa Chỉ']}<br>
-                <hr>
-                <p style="font-size:12px; color:gray;">{row['Ghi Chú']}</p>
+        # HTML cho Popup giống hệt trong ảnh (Có ảnh, Tiêu đề, Nội dung)
+        popup_content = f"""
+            <div style="width:180px; font-family: sans-serif;">
+                <b style="font-size:14px;">Tên Cơ Sở:</b> {row['Tên Cơ Sở']}<br>
+                <b>Lĩnh Vực:</b> {row['Lĩnh Vực']}<br>
+                <b>Ấp:</b> {row['Tên Cơ Sở'].split(' - ')[-1]}<br>
+                <b>Số Lao Động:</b> {row['Số Lao Động']}<br>
+                <img src="{row['Anh']}" width="100%" style="margin-top:10px; border-radius:5px;">
             </div>
         """
         folium.Marker(
             [row['Lat'], row['Lon']],
-            popup=folium.Popup(popup_html, max_width=250),
-            tooltip=row['Tên Cơ Sở'],
-            icon=folium.Icon(color='red' if row['Số Lao Động'] > 20 else 'blue', icon='info-sign')
+            popup=folium.Popup(popup_content, max_width=200),
+            icon=folium.Icon(color='red' if 'Gỗ' in row['Lĩnh Vực'] else 'blue', icon='home')
         ).add_to(m)
     
-    # Hiển thị bản đồ
-    st_data = st_folium(m, width="100%", height=450)
+    st_folium(m, width="100%", height=500)
 
-with col_right:
-    st.subheader("📋 Chi tiết dữ liệu")
-    # Ô tìm kiếm nhanh
-    search = st.text_input("🔍 Tìm tên cơ sở...", "")
-    filtered_df = df[df['Tên Cơ Sở'].str.contains(search, case=False)]
-    
-    # Bảng hiển thị (Ẩn các cột tọa độ cho gọn)
-    show_df = filtered_df.drop(columns=['Lat', 'Lon'])
-    st.dataframe(show_df, use_container_width=True, height=400)
+with col_table:
+    # Hiển thị bảng dữ liệu rút gọn như trong ảnh
+    st.dataframe(
+        df[['Tên Cơ Sở', 'Lĩnh Vực', 'Công ty', 'Số Lao Động']], 
+        height=500, 
+        use_container_width=True,
+        hide_index=True
+    )
 
-# --- 4. TỐI ƯU KHI BẤM CHỌN (SIDEBAR HOẶC BOTTOM) ---
-# Nếu người dùng click vào bản đồ, hiển thị thông tin chi tiết bên dưới
-if st_data['last_object_clicked_popup']:
-    st.info(f"📍 Đang xem chi tiết: {st_data['last_object_clicked_popup']}")
+# --- 4. THANH THỐNG KÊ (DƯỚI CÙNG - METRICS) ---
+st.markdown("---")
+m1, m2, m3, m4 = st.columns(4)
+
+with m1:
+    st.metric("Tổng số điểm", "34")
+with m2:
+    st.metric("Lao động địa phương", "210")
+with m3:
+    st.metric("Công ty", "12")
+with m4:
+    st.metric("Hộ KD", "22")
+
+# --- 5. TỐI ƯU MOBILE (XỬ LÝ KHI CLICK) ---
+# Khi bấm vào 1 dòng trong bảng, bản đồ có thể tự động focus (tùy chọn thêm)
+st.info("💡 Trên điện thoại: Bấm vào các điểm màu trên bản đồ để xem thông tin chi tiết và ảnh cơ sở.")
