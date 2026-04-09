@@ -2,132 +2,91 @@ import streamlit as st
 import pandas as pd
 import folium
 from streamlit_folium import st_folium
-import gspread
-from google.oauth2.service_account import Credentials
 
-# --- 1. CẤU HÌNH TRANG ---
-st.set_page_config(
-    layout="wide", 
-    page_title="Hệ thống quản lý Bắc Tân Uyên",
-    page_icon="📍"
-)
+# --- CẤU HÌNH TRANG ---
+st.set_page_config(page_title="Quản lý Cơ sở Kinh doanh", layout="wide")
 
-# --- 2. HÀM KIỂM TRA ĐĂNG NHẬP ---
-def check_password():
-    """Kiểm tra mật khẩu từ mục [credentials] trong Secrets."""
-    if "password_correct" not in st.session_state:
-        st.markdown("<h2 style='text-align: center; color: #1E3A8A;'>HỆ THỐNG QUẢN LÝ ĐỊA BÀN</h2>", unsafe_allow_html=True)
-        st.write("---")
-        
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            st.info("Vui lòng đăng nhập để truy cập dữ liệu xã Bắc Tân Uyên")
-            password_input = st.text_input("Mật khẩu:", type="password")
-            if st.button("Xác nhận đăng nhập", use_container_width=True):
-                try:
-                    # So khớp mật khẩu với thông tin trong Secrets
-                    if password_input == st.secrets["credentials"]["password"]:
-                        st.session_state["password_correct"] = True
-                        st.rerun()
-                    else:
-                        st.error("❌ Mật khẩu không chính xác!")
-                except KeyError:
-                    st.error("⚠️ Lỗi: Chưa cấu hình 'password' trong Secrets!")
-        return False
-    return True
+# CSS để tùy chỉnh giao diện giống hình mẫu (Dark mode nhẹ, bảng gọn gàng)
+st.markdown("""
+    <style>
+    .main { background-color: #f8f9fa; }
+    .stMetric { background-color: #ffffff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    /* Tối ưu hiển thị bảng trên mobile */
+    @media (max-width: 600px) {
+        .stDataFrame { font-size: 10px; }
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
-# --- 3. CHƯƠNG TRÌNH CHÍNH ---
-if check_password():
-    # Nút đăng xuất tại Sidebar
-    if st.sidebar.button("Đăng xuất 🔓"):
-        del st.session_state["password_correct"]
-        st.rerun()
+# --- 1. MÔ PHỎNG DỮ LIỆU (Thay bằng pd.read_csv hoặc sheet của bạn) ---
+@st.cache_data
+def load_data():
+    data = {
+        'Tên Cơ Sở': ['Công ty ABC', 'Cơ sở Suối Sâu', 'Ấp Đất Cuốc', 'Xưởng Gỗ Thành Tâm', 'Tiệm KD Tổng Hợp'],
+        'Lĩnh Vực': ['Sản xuất Gỗ', 'Nông nghiệp', 'Dịch vụ', 'Sản xuất Gỗ', 'Bán lẻ'],
+        'Địa Chỉ': ['Bắc Tân Uyên', 'Suối Sâu', 'Đất Cuốc', 'Bắc Tân Uyên', 'Bắc Tân Uyên'],
+        'Số Lao Động': [45, 12, 8, 25, 3],
+        'Lat': [11.15, 11.16, 11.14, 11.155, 11.145],
+        'Lon': [106.85, 106.86, 106.84, 106.855, 106.845],
+        'Ghi Chú': ['Đang hoạt động', 'Mới thành lập', 'Đạt chuẩn', 'Cần kiểm tra', 'Đạt chuẩn']
+    }
+    return pd.DataFrame(data)
 
-    # Hàm tải dữ liệu từ Google Sheets API
-    @st.cache_data(ttl=300) 
-    def load_data():
-        try:
-            # THÊM QUYỀN DRIVE ĐỂ TRÁNH LỖI 403
-            scopes = [
-                "https://www.googleapis.com/auth/spreadsheets",
-                "https://www.googleapis.com/auth/drive"
-            ]
-            
-            creds = Credentials.from_service_account_info(
-                st.secrets["gcp_service_account"], 
-                scopes=scopes
-            )
-            client = gspread.authorize(creds)
-            
-            # MỞ FILE VỚI TÊN CHÍNH XÁC LÀ MAP_BTU
-            sh = client.open("MAP_BTU") 
-            worksheet = sh.worksheet("ThongTin")
-            data = worksheet.get_all_records()
-            return pd.DataFrame(data)
-        except Exception as e:
-            st.error(f"Lỗi kết nối dữ liệu: {e}")
-            return pd.DataFrame()
+df = load_data()
 
-    df = load_data()
+# --- 2. PHẦN HEADER & THỐNG KÊ NHANH ---
+st.title("📊 KẾT QUẢ ĐIỀU TRA CƠ SỞ KINH DOANH XÃ")
 
-    if not df.empty:
-        st.title("📍 Bản đồ Cơ sở Kinh doanh - Bắc Tân Uyên")
-        
-        # --- BỘ LỌC TẠI SIDEBAR ---
-        st.sidebar.header("Bộ lọc tìm kiếm")
-        
-        # Lọc theo Ấp
-        if 'Ap' in df.columns:
-            list_ap = sorted(df['Ap'].unique().tolist())
-            selected_ap = st.sidebar.multiselect("Chọn Ấp:", list_ap, default=list_ap)
-            df_loc = df[df['Ap'].isin(selected_ap)]
-        else:
-            df_loc = df
+col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+col_m1.metric("Tổng số điểm", len(df))
+col_m2.metric("Lao động địa phương", df['Số Lao Động'].sum())
+col_m3.metric("Công ty", len(df[df['Lĩnh Vực'].str.contains('Sản xuất')]))
+col_m4.metric("Hộ KD", len(df[df['Lĩnh Vực'].str.contains('Bán lẻ|Dịch vụ')]))
 
-        # --- 4. HIỂN THỊ BẢN ĐỒ FOLIUM ---
-        # Tọa độ mặc định trung tâm xã Bắc Tân Uyên (vùng UBND xã)
-        BTU_CENTER = [11.1684, 106.8406]
-        
-        m = folium.Map(location=BTU_CENTER, zoom_start=14, control_scale=True)
+st.divider()
 
-        for _, row in df_loc.iterrows():
-            # Kiểm tra cột ViTri (tọa độ từ AppSheet)
-            vitri = row.get('ViTri')
-            if pd.notnull(vitri) and vitri != "":
-                try:
-                    lat, lon = map(float, str(vitri).split(','))
-                    
-                    # Phân màu theo Lĩnh vực
-                    color = "blue"
-                    linh_vuc = str(row.get('LinhVuc', '')).lower()
-                    if "công ty" in linh_vuc: color = "red"
-                    elif "hộ kinh doanh" in linh_vuc: color = "green"
+# --- 3. BẢN ĐỒ VÀ DANH SÁCH ---
+col_left, col_right = st.columns([6, 4])
 
-                    popup_content = f"""
-                        <div style='min-width: 150px; font-family: sans-serif;'>
-                            <b style='color: #1E3A8A;'>{row.get('TenCoSo', 'N/A')}</b><br>
-                            <b>Ấp:</b> {row.get('Ap', 'N/A')}<br>
-                            <b>Lao động:</b> {row.get('SoLaoDong', 0)}<br>
-                            <hr style='margin: 5px 0;'>
-                            <b>Trạng thái:</b> {row.get('TrangThai', 'N/A')}
-                        </div>
-                    """
-                    
-                    folium.Marker(
-                        [lat, lon],
-                        popup=folium.Popup(popup_content, max_width=300),
-                        tooltip=row.get('TenCoSo', 'Xem chi tiết'),
-                        icon=folium.Icon(color=color, icon='info-sign')
-                    ).add_to(m)
-                except:
-                    continue
+with col_left:
+    st.subheader("📍 Bản đồ phân bố")
+    # Khởi tạo bản đồ tại trung tâm dữ liệu
+    m = folium.Map(location=[df['Lat'].mean(), df['Lon'].mean()], zoom_start=13, tiles='OpenStreetMap')
+    
+    # Thêm Marker cho từng cơ sở
+    for i, row in df.iterrows():
+        # Nội dung khi bấm vào marker (Popup)
+        popup_html = f"""
+            <div style="width:200px">
+                <h4 style="margin-bottom:5px;">{row['Tên Cơ Sở']}</h4>
+                <b>Lĩnh vực:</b> {row['Lĩnh Vực']}<br>
+                <b>Lao động:</b> {row['Số Lao Động']}<br>
+                <b>Địa chỉ:</b> {row['Địa Chỉ']}<br>
+                <hr>
+                <p style="font-size:12px; color:gray;">{row['Ghi Chú']}</p>
+            </div>
+        """
+        folium.Marker(
+            [row['Lat'], row['Lon']],
+            popup=folium.Popup(popup_html, max_width=250),
+            tooltip=row['Tên Cơ Sở'],
+            icon=folium.Icon(color='red' if row['Số Lao Động'] > 20 else 'blue', icon='info-sign')
+        ).add_to(m)
+    
+    # Hiển thị bản đồ
+    st_data = st_folium(m, width="100%", height=450)
 
-        # Hiển thị bản đồ
-        st_folium(m, width="100%", height=550, returned_objects=[])
+with col_right:
+    st.subheader("📋 Chi tiết dữ liệu")
+    # Ô tìm kiếm nhanh
+    search = st.text_input("🔍 Tìm tên cơ sở...", "")
+    filtered_df = df[df['Tên Cơ Sở'].str.contains(search, case=False)]
+    
+    # Bảng hiển thị (Ẩn các cột tọa độ cho gọn)
+    show_df = filtered_df.drop(columns=['Lat', 'Lon'])
+    st.dataframe(show_df, use_container_width=True, height=400)
 
-        # --- 5. BẢNG DỮ LIỆU CHI TIẾT ---
-        with st.expander("📊 Xem danh sách dữ liệu chi tiết"):
-            st.dataframe(df_loc, use_container_width=True, hide_index=True)
-            
-    else:
-        st.warning("⚠️ Không có dữ liệu để hiển thị. Kiểm tra lại tên Sheet 'ThongTin' hoặc quyền của Service Account.")
+# --- 4. TỐI ƯU KHI BẤM CHỌN (SIDEBAR HOẶC BOTTOM) ---
+# Nếu người dùng click vào bản đồ, hiển thị thông tin chi tiết bên dưới
+if st_data['last_object_clicked_popup']:
+    st.info(f"📍 Đang xem chi tiết: {st_data['last_object_clicked_popup']}")
