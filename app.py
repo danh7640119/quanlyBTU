@@ -9,7 +9,7 @@ from folium.plugins import MarkerCluster
 # --- 1. CẤU HÌNH TRANG ---
 st.set_page_config(
     layout="wide", 
-    page_title="Địa bàn Bắc Tân Uyên",
+    page_title="Địa bàn BTU",
     page_icon="📍"
 )
 
@@ -42,12 +42,12 @@ def check_password():
     """Kiểm tra mật khẩu từ mục [credentials] trong Secrets."""
     if "password_correct" not in st.session_state:
         # Tiêu đề chính như trong ảnh
-        st.markdown("<h2 style='text-align: center; color: #1E3A8A;'>CƠ SỞ KINH DOANH XÃ BẮC TÂN UYÊN</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align: center; color: #1E3A8A;'>CƠ SỞ KINH DOANH BTU</h2>", unsafe_allow_html=True)
         st.write("---")
         
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
-            st.info("Vui lòng đăng nhập để truy cập dữ liệu xã Bắc Tân Uyên")
+            st.info("Vui lòng đăng nhập để truy cập dữ liệu")
             with st.form("login_form"):
                 password_input = st.text_input("Mật khẩu:", type="password")
                 submit = st.form_submit_button("Xác nhận đăng nhập", use_container_width=True)
@@ -100,7 +100,7 @@ if check_password():
 
     if not df.empty:
         # Tiêu đề chính như trong ảnh
-        st.markdown("<h2 style='text-align: center; color: #1E3A8A;'>KẾT QUẢ ĐIỀU TRA CƠ SỞ KINH DOANH XÃ BẮC TÂN UYÊN</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align: center; color: #1E3A8A;'>CƠ SỞ KINH DOANH BTU</h2>", unsafe_allow_html=True)
         
         # --- BỘ LỌC TẠI SIDEBAR ---
         st.sidebar.header("Bộ lọc tìm kiếm")
@@ -225,7 +225,7 @@ if check_password():
             
     else:
         # Tiêu đề chính như trong ảnh (vẫn hiển thị khi không có dữ liệu)
-        st.markdown("<h2 style='text-align: center; color: #1E3A8A;'>KẾT QUẢ ĐIỀU TRA CƠ SỞ KINH DOANH XÃ BẮC TÂN UYÊN</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align: center; color: #1E3A8A;'>CƠ SỞ KINH DOANH BTU</h2>", unsafe_allow_html=True)
         st.warning("⚠️ Không có dữ liệu để hiển thị. Kiểm tra lại tên Sheet 'ThongTin' hoặc quyền của Service Account.")
 
 # Chú giải màu sắc ở sidebar
