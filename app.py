@@ -123,7 +123,10 @@ if check_password():
         with col_metric1:
             st.metric("Tổng số cơ sở:", len(df_loc))
         with col_metric2:
-            st.metric("Lao động địa phương:", f"{df_loc['SoLaoDong'].sum():,} người")
+            # Chuyển đổi cột SoLaoDong sang kiểu số, lỗi sẽ biến thành NaN, sau đó thay NaN bằng 0
+            so_lao_dong_safe = pd.to_numeric(df_loc['SoLaoDong'], errors='coerce').fillna(0)
+            # Hiển thị metric với dữ liệu đã xử lý
+            st.metric("Lao động địa phương:", f"{int(so_lao_dong_safe.sum()):,} người")
         with col_metric3:
             st.metric("Công ty:", len(df_loc[df_loc['LinhVuc'].str.contains("Công ty", case=False, na=False)]))
         with col_metric4:
