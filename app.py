@@ -57,7 +57,7 @@ if check_password():
             
             # QUAN TRỌNG: Thay "Tên_File_Sheet" bằng tên file thực tế của bạn
             # Hoặc dùng ID của Sheet (dãy ký tự trên thanh địa chỉ trình duyệt)
-            sh = client.open("Tên_file_Google_Sheet_Của_Bạn") 
+            sh = client.open("MAP_BTU") 
             worksheet = sh.worksheet("ThongTin")
             data = worksheet.get_all_records()
             return pd.DataFrame(data)
