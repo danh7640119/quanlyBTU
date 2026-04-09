@@ -25,7 +25,7 @@ def check_password():
             password_input = st.text_input("Mật khẩu:", type="password")
             if st.button("Xác nhận đăng nhập", use_container_width=True):
                 try:
-                    # Lấy mật khẩu từ Secrets
+                    # So khớp mật khẩu với thông tin trong Secrets
                     if password_input == st.secrets["credentials"]["password"]:
                         st.session_state["password_correct"] = True
                         st.rerun()
@@ -44,19 +44,22 @@ if check_password():
         st.rerun()
 
     # Hàm tải dữ liệu từ Google Sheets API
-    @st.cache_data(ttl=300) # Lưu cache 5 phút để tăng tốc
+    @st.cache_data(ttl=300) 
     def load_data():
         try:
-            scopes = ["https://www.googleapis.com/auth/spreadsheets"]
-            # Sử dụng Service Account từ Secrets
+            # THÊM QUYỀN DRIVE ĐỂ TRÁNH LỖI 403
+            scopes = [
+                "https://www.googleapis.com/auth/spreadsheets",
+                "https://www.googleapis.com/auth/drive"
+            ]
+            
             creds = Credentials.from_service_account_info(
                 st.secrets["gcp_service_account"], 
                 scopes=scopes
             )
             client = gspread.authorize(creds)
             
-            # QUAN TRỌNG: Thay "Tên_File_Sheet" bằng tên file thực tế của bạn
-            # Hoặc dùng ID của Sheet (dãy ký tự trên thanh địa chỉ trình duyệt)
+            # MỞ FILE VỚI TÊN CHÍNH XÁC LÀ MAP_BTU
             sh = client.open("MAP_BTU") 
             worksheet = sh.worksheet("ThongTin")
             data = worksheet.get_all_records()
@@ -74,45 +77,39 @@ if check_password():
         st.sidebar.header("Bộ lọc tìm kiếm")
         
         # Lọc theo Ấp
-        list_ap = sorted(df['Ap'].unique().tolist())
-        selected_ap = st.sidebar.multiselect("Chọn Ấp:", list_ap, default=list_ap)
-        
-        # Lọc theo Lĩnh vực (nếu có cột LinhVuc)
-        if 'LinhVuc' in df.columns:
-            list_lv = sorted(df['LinhVuc'].unique().tolist())
-            selected_lv = st.sidebar.multiselect("Lĩnh vực:", list_lv, default=list_lv)
-            mask = (df['Ap'].isin(selected_ap)) & (df['LinhVuc'].isin(selected_lv))
+        if 'Ap' in df.columns:
+            list_ap = sorted(df['Ap'].unique().tolist())
+            selected_ap = st.sidebar.multiselect("Chọn Ấp:", list_ap, default=list_ap)
+            df_loc = df[df['Ap'].isin(selected_ap)]
         else:
-            mask = df['Ap'].isin(selected_ap)
-            
-        df_loc = df[mask]
+            df_loc = df
 
         # --- 4. HIỂN THỊ BẢN ĐỒ FOLIUM ---
-        # Tọa độ mặc định trung tâm xã Bắc Tân Uyên
+        # Tọa độ mặc định trung tâm xã Bắc Tân Uyên (vùng UBND xã)
         BTU_CENTER = [11.1684, 106.8406]
         
         m = folium.Map(location=BTU_CENTER, zoom_start=14, control_scale=True)
 
         for _, row in df_loc.iterrows():
-            if pd.notnull(row.get('ViTri')) and row.get('ViTri') != "":
+            # Kiểm tra cột ViTri (tọa độ từ AppSheet)
+            vitri = row.get('ViTri')
+            if pd.notnull(vitri) and vitri != "":
                 try:
-                    # Tách chuỗi "Lat, Long" từ AppSheet
-                    lat, lon = map(float, str(row['ViTri']).split(','))
+                    lat, lon = map(float, str(vitri).split(','))
                     
-                    # Xác định màu sắc Marker
+                    # Phân màu theo Lĩnh vực
                     color = "blue"
                     linh_vuc = str(row.get('LinhVuc', '')).lower()
                     if "công ty" in linh_vuc: color = "red"
                     elif "hộ kinh doanh" in linh_vuc: color = "green"
 
-                    # Tạo nội dung Popup (có thể thêm cột HinhAnh nếu muốn)
                     popup_content = f"""
                         <div style='min-width: 150px; font-family: sans-serif;'>
                             <b style='color: #1E3A8A;'>{row.get('TenCoSo', 'N/A')}</b><br>
                             <b>Ấp:</b> {row.get('Ap', 'N/A')}<br>
                             <b>Lao động:</b> {row.get('SoLaoDong', 0)}<br>
                             <hr style='margin: 5px 0;'>
-                            <b>Lĩnh vực:</b> {row.get('LinhVucChiTiet', 'N/A')}
+                            <b>Trạng thái:</b> {row.get('TrangThai', 'N/A')}
                         </div>
                     """
                     
@@ -122,7 +119,7 @@ if check_password():
                         tooltip=row.get('TenCoSo', 'Xem chi tiết'),
                         icon=folium.Icon(color=color, icon='info-sign')
                     ).add_to(m)
-                except Exception:
+                except:
                     continue
 
         # Hiển thị bản đồ
@@ -133,4 +130,4 @@ if check_password():
             st.dataframe(df_loc, use_container_width=True, hide_index=True)
             
     else:
-        st.warning("⚠️ Không tìm thấy dữ liệu. Vui lòng kiểm tra lại tên Sheet và quyền truy cập của Service Account.")
+        st.warning("⚠️ Không có dữ liệu để hiển thị. Kiểm tra lại tên Sheet 'ThongTin' hoặc quyền của Service Account.")
