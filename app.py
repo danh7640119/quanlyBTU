@@ -1,59 +1,24 @@
 import streamlit as st
+import gspread
+from google.oauth2.service_account import Credentials
 import pandas as pd
-import folium
-from streamlit_folium import st_folium
 
-# Cấu hình trang
-st.set_page_config(layout="wide", page_title="Bản đồ Xã Bắc Tân Uyên")
+# Cấu hình quyền truy cập
+scopes = ["https://www.googleapis.com/auth/spreadsheets"]
 
-# Hàm đọc dữ liệu
-def load_data():
-    # DÁN CÁI LINK CSV BẠN LẤY Ở BƯỚC 1 VÀO ĐÂY
-    url = "https://docs.google.com/spreadsheets/d/e/XXXXX/pub?output=csv"
-    df = pd.read_csv(url)
-    return df
+# Lấy thông tin từ Secret của Streamlit (An toàn)
+skey = st.secrets["gcp_service_account"]
+creds = Credentials.from_service_account_info(skey, scopes=scopes)
+client = gspread.authorize(creds)
 
-st.title("📍 Hệ thống quản lý cơ sở kinh doanh - Xã Bắc Tân Uyên")
+# Đọc Sheet
+@st.cache_data(ttl=300) # Lưu bộ nhớ đệm 5 phút
+def get_data():
+    sh = client.open("Tên_File_Google_Sheet_Của_Bạn")
+    worksheet = sh.worksheet("ThongTin")
+    data = worksheet.get_all_records()
+    return pd.DataFrame(data)
 
-try:
-    df = load_data()
-    
-    # Bộ lọc ở thanh bên
-    st.sidebar.header("Bộ lọc")
-    all_ap = df['Ap'].unique().tolist()
-    selected_ap = st.sidebar.multiselect("Chọn Ấp", all_ap, default=all_ap)
-    
-    # Lọc dữ liệu
-    df_filtered = df[df['Ap'].isin(selected_ap)]
-
-    # Tạo bản đồ (Tọa độ trung tâm xã)
-    m = folium.Map(location=[11.12, 106.57], zoom_start=13)
-
-    for index, row in df_filtered.iterrows():
-        if pd.notnull(row['ViTri']):
-            try:
-                lat, lon = map(float, str(row['ViTri']).split(','))
-                
-                # Màu sắc theo lĩnh vực
-                color = "blue"
-                if "Gỗ" in str(row['LinhVuc']): color = "red"
-                elif "Dịch vụ" in str(row['LinhVuc']): color = "green"
-
-                folium.Marker(
-                    [lat, lon],
-                    popup=f"<b>{row['TenCoSo']}</b><br>Ấp: {row['Ap']}<br>Lao động: {row['SoLaoDong']}",
-                    tooltip=row['TenCoSo'],
-                    icon=folium.Icon(color=color, icon="info-sign")
-                ).add_to(m)
-            except:
-                continue
-
-    # Hiển thị bản đồ
-    st_folium(m, width=1000, height=500)
-    
-    # Hiển thị bảng dữ liệu
-    st.subheader("Danh sách chi tiết")
-    st.dataframe(df_filtered[['TenCoSo', 'Ap', 'DiaChi', 'SoLaoDong', 'TrangThai']])
-
-except Exception as e:
-    st.error(f"Đang chờ dữ liệu từ AppSheet... (Lỗi: {e})")
+df = get_data()
+st.write("Dữ liệu đã được bảo mật qua API!")
+st.dataframe(df)
