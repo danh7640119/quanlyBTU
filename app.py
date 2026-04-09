@@ -9,7 +9,7 @@ from folium.plugins import MarkerCluster
 # --- 1. CẤU HÌNH TRANG ---
 st.set_page_config(
     layout="wide", 
-    page_title="Hệ thống quản lý Địa bàn Bắc Tân Uyên",
+    page_title="Địa bàn Bắc Tân Uyên",
     page_icon="📍"
 )
 
@@ -42,7 +42,7 @@ def check_password():
     """Kiểm tra mật khẩu từ mục [credentials] trong Secrets."""
     if "password_correct" not in st.session_state:
         # Tiêu đề chính như trong ảnh
-        st.markdown("<h2 style='text-align: center; color: #1E3A8A;'>KẾT QUẢ ĐIỀU TRA CƠ SỞ KINH DOANH XÃ BẮC TÂN UYÊN</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align: center; color: #1E3A8A;'>CƠ SỞ KINH DOANH XÃ BẮC TÂN UYÊN</h2>", unsafe_allow_html=True)
         st.write("---")
         
         col1, col2, col3 = st.columns([1, 2, 1])
