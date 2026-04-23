@@ -138,7 +138,7 @@ if check_password():
         # --- 4. HIỂN THỊ BẢN ĐỒ FOLIUM ---
         with map_col:
             # Tọa độ mặc định trung tâm xã Bắc Tân Uyên
-            BTU_CENTER = [11.1684, 106.8406]
+            BTU_CENTER = [11.115307, 106.842750]
             
             # Cấu hình bản đồ
             m = folium.Map(
