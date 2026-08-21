@@ -1,14 +1,3 @@
-Chào bạn, để tinh chỉnh code theo các yêu cầu của bạn (bỏ chức năng tải xuống nếu có, chuyển bảng dữ liệu xuống dưới bản đồ để bản đồ to rõ hơn, và thêm chức năng chỉ đường bằng Google Maps), bạn có thể tham khảo đoạn code đã được cập nhật dưới đây:
-
-### Các thay đổi chính:
-
-1.  **Bố cục (Layout):** Đã bỏ chia cột `[2, 1]`. Bây giờ bản đồ sẽ hiển thị full chiều rộng ở trên, và bảng dữ liệu sẽ nằm ở bên dưới.
-2.  **Chỉ đường (Directions):** Đã thêm một thẻ HTML `<a>` vào `popup_content` của Folium. Khi người dùng click vào marker trên bản đồ, popup sẽ hiện ra kèm một đường link **"📍 Chỉ đường đến đây"**. Khi bấm vào, nó sẽ mở Google Maps và tự động lấy vị trí hiện tại của người dùng làm điểm bắt đầu, điểm đến là tọa độ của cơ sở đó.
-3.  **Bảng dữ liệu:** Chuyển xuống dưới cùng. (Lưu ý: Nút tải xuống (download) nhỏ xuất hiện khi trỏ chuột vào bảng là tính năng mặc định của `st.dataframe` trong các phiên bản Streamlit mới. Không có hàm code trực tiếp nào để tắt nó ngoại trừ việc dùng CSS ẩn đi, tuy nhiên việc đưa bảng xuống dưới sẽ giúp giao diện gọn gàng hơn rất nhiều).
-
-### Code cập nhật:
-
-``` python
 import streamlit as st
 import pandas as pd
 import folium
@@ -208,5 +197,3 @@ if check_password():
         - 🟢 : Hộ kinh doanh
         - 🔵 : Lĩnh vực khác
         """)
-
-```
